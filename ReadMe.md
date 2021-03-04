@@ -5,7 +5,8 @@ a tool to convert point cloud to range image
 ## Dependencies
 
 The code is based on the following prerequisites:
-- PCL(common)
+- PCL
+- GDAL
 
 ## Compilation
 
