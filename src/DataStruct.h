@@ -1,5 +1,5 @@
-#ifndef _DATASTRUCT_H_
-#define _DATASTRUCT_H_
+#ifndef DATASTRUCT_H_
+#define DATASTRUCT_H_
 
 #include <vector>
 #include <string>
@@ -39,8 +39,9 @@ struct BACameraIntrinsics
 	BACameraIntrinsics() {}
 	BACameraIntrinsics(const BACameraIntrinsics& intrinsics) :
 		intrins(intrinsics.intrins) {
-		format_x = format_y = 1.0;
-		pixelsize = 0.006;
+		format_x = intrinsics.format_x;
+		format_y = intrinsics.format_y;
+		pixelsize = intrinsics.pixelsize;
 	}
 	double format_x, format_y, pixelsize; //ibundle内部接口,单位为mm
 	Eigen::Matrix<double, PER_IOS_BLOCK_NUM, 1> intrins;
@@ -78,9 +79,11 @@ struct ImageLasInfo
 {
 	ImageLasInfo() { }
 	ImageLasInfo(const ImageLasInfo& ilm):
-		lasList(ilm.lasList), rotate_(ilm.rotate_), translate_(ilm.translate_){ }
+		las_list(ilm.las_list), box_list(ilm.box_list),rotate_(ilm.rotate_), translate_(ilm.translate_){ }
 
-	std::vector<std::string> lasList;
+	std::vector<std::string> las_list;
+	std::vector<BoundingBoxCorner3D> box_list;
+
 	Eigen::Matrix3d rotate_;
 	Eigen::Vector3d translate_;
 

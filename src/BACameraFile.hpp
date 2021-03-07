@@ -1,5 +1,5 @@
-#ifndef _BACAMERAFILE_HPP_
-#define _BACAMERAFILE_HPP_
+#ifndef BACAMERAFILE_HPP_
+#define BACAMERAFILE_HPP_
 
 #include "DataStruct.h"
 #include <vector>
@@ -7,10 +7,12 @@
 #include <fstream>
 #include <stdio.h>
 #include <map>
-#include <memory.h>	//shared_ptr
+#include <memory.h>
 
+#ifdef  _WIN32
 #undef sscanf_s
 #define sscanf sscanf_s
+#endif
 
 class BACameraFile
 {
@@ -46,8 +48,10 @@ public:
 	bool LoadCmr(const std::string cmrIntrinsicFile, std::vector<BACameraIntrinsics> &all_intrinsics)
 	{
 		std::ifstream fp(cmrIntrinsicFile);
-		if (!fp) return false;
-
+		if (!fp) {
+			std::cout << "Couldn't find camera intrinsic file:" << cmrIntrinsicFile<<std::endl;
+			return false;
+		}
 		std::string buf;
 		std::getline(fp, buf);
 		std::getline(fp, buf);
@@ -69,7 +73,7 @@ public:
 				&x0, &y0, &f, &formatx, &formaty, &pixelsize,
 				&k0, &k1, &k2, &k3, &p1, &p2, &b1, &b2, &attrib);
 
-			if (tmp == 16) {//ÐÂ°æ±¾
+			if (tmp == 16) {
 				all_intrinsics[i].intrins(OFFSET_F0) = f;
 				all_intrinsics[i].intrins(OFFSET_X0) = x0;
 				all_intrinsics[i].intrins(OFFSET_Y0) = y0;
@@ -94,7 +98,10 @@ public:
 	bool LoadPht(const std::string cameraFile, std::vector<BACamera> &all_cameras)
 	{
 		std::ifstream fp(cameraFile);
-		if (!fp) return false;
+		if (!fp) {
+			std::cout << "Couldn't find camera extrinsic file:" << cameraFile << std::endl;
+			return false;
+		}
 
 		std::string buf;
 		std::getline(fp, buf);
@@ -126,7 +133,7 @@ public:
 			all_cameras[i].imageid = i;
 			all_cameras[i].intrinsics_group = CameraID;
 
-			m_imageSortMap.insert(std::pair<int, int>(ImageID, i));  //±ãÓÚpts¿ìËÙË÷Òý
+			m_imageSortMap.insert(std::pair<int, int>(ImageID, i));  //ï¿½ï¿½ï¿½ï¿½ptsï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
 			all_cameras[i].nStripID = StripID;
 			all_cameras[i].nCamera = CameraID;
@@ -148,7 +155,7 @@ public:
 	std::vector<BACameraIntrinsics> m_intrinsics;
 	std::vector<BACamera> m_cameras;
 
-	std::map<int, int> m_imageSortMap;  //IBundleÖÐimagID->imgid(´Ó0¿ªÊ¼)
+	std::map<int, int> m_imageSortMap;  //IBundleï¿½ï¿½imagID->imgid(ï¿½ï¿½0ï¿½ï¿½Ê¼)
 };
 
-#endif // _BAFILE_HPP_
+#endif // BAFILE_HPP_

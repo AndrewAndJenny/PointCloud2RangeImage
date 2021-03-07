@@ -19,8 +19,8 @@ public:
 	// =====CONSTRUCTOR & DESTRUCTOR=====
 	/** Constructor */
 	RangeImagePlanar() : focal_length(0.0f),
-		pixel_size_(0.0f),
-		center_x_(0.0f), center_y_(0.0f) , to_range_image_system_(Eigen::Matrix3f::Identity()),
+		pixel_size_(0.0f),center_x_(0.0f), center_y_(0.0f) , 
+		to_range_image_system_(Eigen::Matrix3f::Identity()),
 		to_world_system_(Eigen::Matrix3f::Identity())
 	{
 		reset();
@@ -28,7 +28,7 @@ public:
 		unobserved_point.range = -std::numeric_limits<float>::infinity();
 	};
 	/** Destructor */
-	virtual ~RangeImagePlanar() {};
+	~RangeImagePlanar() {};
 
 	// =====PUBLIC METHODS=====
 	/** \brief Get a boost shared pointer of a copy of this */
@@ -87,12 +87,10 @@ public:
 	void recalculate3DPointPositions();
 
 	/** Transforms an image point in float values to an image point in int values */
-	inline void
-		real2DToInt2D(float x, float y, int& xInt, int& yInt) const;
+	inline void real2DToInt2D(float x, float y, int& xInt, int& yInt) const;
 
 	/** Check if a point is inside of the image */
-	inline bool
-		isInImage(int x, int y) const;
+	inline bool isInImage(int x, int y) const;
 
 	/** \brief Calculate the 3D point according to the given image point and range
 	  * \param image_x the x image position
@@ -101,8 +99,7 @@ public:
 	  * \param point the resulting 3D point
 	  * \note Implementation according to planar range images (compared to spherical as in the original)
 	  */
-	inline void
-		calculate3DPoint(float image_x, float image_y, float range, Eigen::Vector3f& point) const;
+	inline void calculate3DPoint(float image_x, float image_y, float range, Eigen::Vector3f& point) const;
 
 	/** \brief Calculate the image point and range from the given 3D point
 	  * \param point the resulting 3D point
@@ -111,20 +108,16 @@ public:
 	  * \param range the resulting range
 	  * \note Implementation according to planar range images (compared to spherical as in the original)
 	  */
-	virtual inline void
-		getImagePoint(const Eigen::Vector3f& point, float& image_x, float& image_y, float& range) const;
+	inline void getImagePoint(const Eigen::Vector3f& point, float& image_x, float& image_y, float& range) const;
 
 	//! Getter for the focal length
-	inline float
-		getFocalLengthX() const { return focal_length; }
+	inline float getFocalLengthX() const { return focal_length; }
 
 	//! Getter for the principal point in X
-	inline float
-		getCenterX() const { return center_x_; }
+	inline float getCenterX() const { return center_x_; }
 
 	//! Getter for the principal point in Y
-	inline float
-		getCenterY() const { return center_y_; }
+	inline float getCenterY() const { return center_y_; }
 
 	// =====MEMBER VARIABLES=====
 	// BaseClass:
@@ -145,6 +138,7 @@ protected:
 	pcl::PointWithRange unobserved_point;
 };
 
+
 /////////////////////////////////////////////////////////////////////////
 template <typename PointCloudType> void
 RangeImagePlanar::createFromPointCloudWithFixedSize(const PointCloudType& point_cloud,
@@ -159,13 +153,13 @@ RangeImagePlanar::createFromPointCloudWithFixedSize(const PointCloudType& point_
 	center_x_ = di_center_x;
 	center_y_ = di_center_y;
 	focal_length = di_focal_length;
-	
+
 	pixel_size_ = pixel_size;
 
 	is_dense = false;
 
 	to_world_system_ = Rotation;
-	
+
 	to_range_image_system_ = Rotation;
 	to_range_image_system_.transposeInPlace();
 
@@ -188,7 +182,7 @@ template <typename PointCloudType> void RangeImagePlanar::doZBuffer(const PointC
 
 	unsigned int size = width * height;
 	int* counters = new int[size];
-	ERASE_ARRAY(counters, size);
+	memset(counters, 0, size * sizeof(*counters));
 
 	top = height; right = -1; bottom = -1; left = width;
 
@@ -306,8 +300,8 @@ void RangeImagePlanar::recalculate3DPointPositions()
 /////////////////////////////////////////////////////////////////////////
 void RangeImagePlanar::calculate3DPoint(float image_x, float image_y, float range, Eigen::Vector3f& point) const
 {
-	float delta_x = (image_x  - center_x_)*pixel_size_,
-		delta_y = (-image_y+center_y_)*pixel_size_;
+	float delta_x = (image_x - center_x_)*pixel_size_,
+		delta_y = (-image_y + center_y_)*pixel_size_;
 
 	Eigen::Vector3f deltaPoint(delta_x, delta_y, -focal_length);
 	Eigen::Vector3f transformedPoint = to_world_system_ * deltaPoint;
@@ -332,5 +326,4 @@ inline void RangeImagePlanar::getImagePoint(const Eigen::Vector3f& point, float&
 	image_y = -y_mm / pixel_size_ + center_y_;
 
 }
-
 #endif // RANGEIMAGEPLANAR_H
