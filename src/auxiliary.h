@@ -2,11 +2,14 @@
 #define AUXILIARY_H
 
 #include "lasreader.hpp"
-#include "Eigen/Geometry"
+#include"opencv2/core.hpp"
 #include "DataStruct.h"
 #include <iostream>
-#include <boost/filesystem.hpp>
 
 bool GetBoundingBox(std::string lasFilePath, BoundingBoxCorner3D& box);
+
 void GetFiles(std::string path, std::string ext, std::vector<std::string>& files);
+
+void matrixInverse(Eigen::MatrixXf& matrix);
+
 #endif // AUXILIARY_H

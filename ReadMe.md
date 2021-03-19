@@ -6,8 +6,7 @@ A tool that uses multi-threading to batch convert point clouds into range images
 
 The code is based on the following prerequisites:
 - PCL
-- GDAL
-- Qt(QtCore)
+- OpencV
 - LASlib
 
 ## Compilation
@@ -15,7 +14,7 @@ The code is based on the following prerequisites:
 prerequisites: cmake version>=3.0
 
 ```
-1. git clone https://github.com/AndrewAndJenny/PointCloud2RangeImage.git
+1. git clone -b feature-singleThread https://github.com/AndrewAndJenny/PointCloud2RangeImage.git
 2. cd PointCloud2RangeImage
 ```
 

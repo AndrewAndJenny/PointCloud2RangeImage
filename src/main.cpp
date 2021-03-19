@@ -18,9 +18,10 @@ static void Usage(const char* pszErrorMsg = NULL)
 	fprintf(stderr, "[-help,-h]										[produce help message]\n");
 	fprintf(stderr, "[-cmrPath]									[input the absolute path of camera intrinsics file]\n");
 	fprintf(stderr, "[-phtPath]									[input the absolute path of camera extrinsic file]\n");
+	fprintf(stderr, "[-maxEle]									[Maximum elevation of saved point cloud]\n");
+	fprintf(stderr, "[-gridNum]									[Dense image interpolate windows radius(sugguest 1-4) too big cause memory overflow]\n");
 	fprintf(stderr, "[-lasPath]										[input the absolute path of las files corresponding to the photos\n");
 	fprintf(stderr, "[-saveFolder]								[output the absolute path of range images\n");
-	fprintf(stderr, "[-threadNum]								[the number of parallel processing threads\n");
 	if (pszErrorMsg != NULL)
 		fprintf(stderr, "\nFAILURE: %s\n", pszErrorMsg);
 
@@ -30,7 +31,8 @@ static void Usage(const char* pszErrorMsg = NULL)
 int main(int argc, char** argv)
 {
 	std::string cmrFile_path = "", phtFile_path = "", lasFolder_Path = "", saveFolder_path = "";
-	int thread_num = 4;
+	int ngrid = 2;
+	double max_elevation = 150;
 
 	for (int i = 1; i < argc; i++)
 	{
@@ -47,6 +49,14 @@ int main(int argc, char** argv)
 			i++; if (i >= argc) continue;
 			phtFile_path = argv[i];
 		}
+		else if (strcmp(argv[i], "-maxEle") == 0) {
+			i++; if (i >= argc) continue;
+			max_elevation = atof(argv[i]);
+		}
+		else if (strcmp(argv[i], "-gridNum") == 0) {
+			i++; if (i >= argc) continue;
+			ngrid = atoi(argv[i]);
+		}
 		else if (strcmp(argv[i], "-lasPath") == 0) {
 			i++; if (i >= argc) continue;
 			lasFolder_Path = argv[i];
@@ -54,10 +64,6 @@ int main(int argc, char** argv)
 		else if (strcmp(argv[i], "-saveFolder") == 0) {
 			i++; if (i >= argc) continue;
 			saveFolder_path = argv[i];
-		}
-		else if (strcmp(argv[i], "-threadNum") == 0) {
-			i++; if (i >= argc) continue;
-			thread_num = std::atoi(argv[i]);
 		}
 		else
 		{
@@ -86,13 +92,15 @@ int main(int argc, char** argv)
 
 #endif
 
-	RangeImageTool::Ptr range_image_tool(new RangeImageTool);
-	range_image_tool->setCmrPath(cmrFile_path);
-	range_image_tool->setPhtPath(phtFile_path);
-	range_image_tool->setLasPath(lasFolder_Path);
-	range_image_tool->setOutputFolder(saveFolder_path);
-	range_image_tool->setThreadNum(thread_num);
+	RangeImageTool::Ptr pc_rangeImage(new RangeImageTool);
+	pc_rangeImage->setCmrPath(cmrFile_path);
+	pc_rangeImage->setPhtPath(phtFile_path);
+	pc_rangeImage->setMaxElevation(max_elevation);
+	pc_rangeImage->setGridNum(ngrid);
 
-	range_image_tool->generateRangeImage();
+	pc_rangeImage->setLasPath(lasFolder_Path);
+	pc_rangeImage->setOutputFolder(saveFolder_path);
+
+	pc_rangeImage->generateRangeImage();
 
 }

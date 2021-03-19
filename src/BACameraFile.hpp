@@ -9,10 +9,8 @@
 #include <map>
 #include <memory.h>
 
-#ifdef  _WIN32
 #undef sscanf_s
 #define sscanf sscanf_s
-#endif
 
 class BACameraFile
 {
@@ -133,7 +131,7 @@ public:
 			all_cameras[i].imageid = i;
 			all_cameras[i].intrinsics_group = CameraID;
 
-			m_imageSortMap.insert(std::pair<int, int>(ImageID, i));  //ï¿½ï¿½ï¿½ï¿½ptsï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+			m_imageSortMap.insert(std::pair<int, int>(ImageID, i));  //±ãÓÚpts¿ìËÙË÷Òý
 
 			all_cameras[i].nStripID = StripID;
 			all_cameras[i].nCamera = CameraID;
@@ -155,7 +153,7 @@ public:
 	std::vector<BACameraIntrinsics> m_intrinsics;
 	std::vector<BACamera> m_cameras;
 
-	std::map<int, int> m_imageSortMap;  //IBundleï¿½ï¿½imagID->imgid(ï¿½ï¿½0ï¿½ï¿½Ê¼)
+	std::map<int, int> m_imageSortMap;  //IBundleÖÐimagID->imgid(´Ó0¿ªÊ¼)
 };
 
 #endif // BAFILE_HPP_

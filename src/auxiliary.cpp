@@ -1,3 +1,8 @@
+#ifdef  _WIN32
+#include<io.h>
+#else defined linux
+#include <sys/io.h>
+#endif
 
 #include "auxiliary.h"
 
@@ -37,22 +42,42 @@ bool GetBoundingBox(std::string lasFilePath, BoundingBoxCorner3D& box)
 	return true;
 }
 
-void GetFiles(std::string path, std::string ext, std::vector<std::string>& files)
+void GetFiles(std::string path, std::string ext,std::vector<std::string>& files)
 {
-	boost::filesystem::path folder_path(path);
-	if (!boost::filesystem::exists(folder_path))
+	long long hFile = 0;
+
+	struct _finddata_t fileinfo;
+	std::string tmp_path;
+	if ((hFile = _findfirst(tmp_path.assign(path).append("/*.").append(ext).c_str(), &fileinfo)) != -1)
 	{
-		return;
-	}
+		do
+		{
+			if (fileinfo.attrib & _A_SUBDIR)
+			{
+				if (strcmp(fileinfo.name, ".") != 0 && strcmp(fileinfo.name, "..") != 0)
+					GetFiles(tmp_path.assign(path).append("/").append(fileinfo.name), ext,files);
+			}
+			else
+			{
+				files.push_back(tmp_path.assign(path).append("/").append(fileinfo.name));
+			}
+		} while (_findnext(hFile, &fileinfo) == 0);
 
-	boost::filesystem::directory_iterator end_iter;
-	for (boost::filesystem::directory_iterator iter(folder_path); iter != end_iter; ++iter)
+		_findclose(hFile);
+	}
+}
+
+void matrixInverse(Eigen::MatrixXf& matrix)
+{
+	int rows = matrix.rows();
+	int cols = matrix.cols();
+
+	for (int i = 0; i < rows; ++i)
 	{
-		if (boost::filesystem::is_regular_file(iter->status())&& iter->path().extension()==ext)
-			files.push_back(iter->path().string());
-
-		if (boost::filesystem::is_directory(iter->status()))
-			GetFiles(iter->path().string(), ext,files);
+		for (int j = 0; j < cols; ++j)
+		{
+			if (matrix(i,j) != 0)
+				matrix(i, j) = 1 / matrix(i, j);
+		}
 	}
-
 }
