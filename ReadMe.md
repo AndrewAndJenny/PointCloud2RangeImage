@@ -1,4 +1,4 @@
-# PointCloud2RangeImage
+# RangeImagePlanar
 
 A tool that uses multi-threading to batch convert point clouds into range images
 
