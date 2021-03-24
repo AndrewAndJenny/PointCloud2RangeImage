@@ -187,8 +187,8 @@ void RangeImageTool::generateSingleRangeImage(int image_id, ImageLasInfo imgLasI
 
 	RangeImagePlanar range_image_planar;
 	
-	Eigen::Matrix3f Rotation = imgLasInfo.rotate_.cast<float>();
-	Eigen::Vector3f Location = imgLasInfo.translate_.cast<float>();
+	Eigen::Matrix3f Rotation = imgLasInfo.rotation.cast<float>();
+	Eigen::Vector3f Location = imgLasInfo.translation.cast<float>();
 	//只有pixelsize,f0单位为mm,其他都是像素坐标，没有单位
 	range_image_planar.createFromPointCloudWithFixedSize(*point_cloud, format_x, format_y, cx, cy, f0, pixel_size, Rotation, Location);
 
@@ -208,19 +208,18 @@ void RangeImageTool::getImagePoint(const BACameraIntrinsics& intrinsic, const Im
 	double y0_mm = intrinsic.intrins(OFFSET_Y0);
 	double f0_mm = intrinsic.intrins(OFFSET_F0);
 
-	Eigen::Matrix3d Rotate_ = imageinfo.rotate_;
-	Eigen::Vector3d Location_ = imageinfo.translate_;
+	Eigen::Matrix3d rotation = imageinfo.rotation;
+	Eigen::Vector3d translation = imageinfo.translation;
 
-	Rotate_.transposeInPlace();
+	rotation.transposeInPlace();
 
-	Eigen::Vector3d transformedPoint = Rotate_ * (point3d - Location_);
+	Eigen::Vector3d transformedPoint = rotation * (point3d - translation);
 
 	double x_mm = -f0_mm * transformedPoint[0] / transformedPoint[2];
 	double y_mm = -f0_mm * transformedPoint[1] / transformedPoint[2];
 
 	point2d[0] = (x_mm + x0_mm + format_x_mm * 0.5) / intrinsic.pixelsize;
 	point2d[1] = (-y_mm + y0_mm + format_y_mm * 0.5) / intrinsic.pixelsize;
-
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -426,22 +425,22 @@ void RangeImageTool::getRotationAndTranslate(const BACamera& extrinsic, ImageLas
 	double omega = extrinsic.Posture(EOS_OMG);
 	double kappa = extrinsic.Posture(EOS_KAP);
 
-	Eigen::Matrix3d extrinsicMatrix = Eigen::Matrix3d::Identity();
+	Eigen::Matrix3d erotation = Eigen::Matrix3d::Identity();
 
-	extrinsicMatrix(0, 0) = std::cos(phi)*std::cos(kappa) - std::sin(phi)*std::sin(omega)*std::sin(kappa);
-	extrinsicMatrix(0, 1) = -std::cos(phi)* std::sin(kappa) - std::sin(phi)* std::sin(omega)* std::cos(kappa);
-	extrinsicMatrix(0, 2) = -std::sin(phi)* std::cos(omega);
+	erotation(0, 0) = std::cos(phi)*std::cos(kappa) - std::sin(phi)*std::sin(omega)*std::sin(kappa);
+	erotation(0, 1) = -std::cos(phi)* std::sin(kappa) - std::sin(phi)* std::sin(omega)* std::cos(kappa);
+	erotation(0, 2) = -std::sin(phi)* std::cos(omega);
 
-	extrinsicMatrix(1, 0) = std::cos(omega)* std::sin(kappa);
-	extrinsicMatrix(1, 1) = std::cos(omega)* std::cos(kappa);
-	extrinsicMatrix(1, 2) = -std::sin(omega);
+	erotation(1, 0) = std::cos(omega)* std::sin(kappa);
+	erotation(1, 1) = std::cos(omega)* std::cos(kappa);
+	erotation(1, 2) = -std::sin(omega);
 
-	extrinsicMatrix(2, 0) = std::sin(phi)* std::cos(kappa) + std::cos(phi)* std::sin(omega)* std::sin(kappa);
-	extrinsicMatrix(2, 1) = -std::sin(phi)* std::sin(kappa) + std::cos(phi)* std::sin(omega)* std::cos(kappa);
-	extrinsicMatrix(2, 2) = std::cos(phi)* std::cos(omega);
+	erotation(2, 0) = std::sin(phi)* std::cos(kappa) + std::cos(phi)* std::sin(omega)* std::sin(kappa);
+	erotation(2, 1) = -std::sin(phi)* std::sin(kappa) + std::cos(phi)* std::sin(omega)* std::cos(kappa);
+	erotation(2, 2) = std::cos(phi)* std::cos(omega);
 
-	imageinfo.rotate_ = extrinsicMatrix;
-	imageinfo.translate_ = extrinsic.Location;
+	imageinfo.rotation = erotation;
+	imageinfo.translation = extrinsic.Location;
 
 }
 
@@ -464,7 +463,8 @@ bool RangeImageTool::isHomologous(const BACameraIntrinsics& intrinsic, const Ima
 	double tmp_x, tmp_y, tmp_z;
 	tmp_z = box.min_z;
 
-	for(int i=0;i<= sampleSize;++i)
+	for (int i = 0; i <= sampleSize; ++i)
+	{
 		for (int j = 0; j <= sampleSize; ++j)
 		{
 			tmp_x = box.min_x + i * pcLengthInternal;
@@ -473,14 +473,10 @@ bool RangeImageTool::isHomologous(const BACameraIntrinsics& intrinsic, const Ima
 			getImagePoint(intrinsic, imageinfo, point3d, point2d);
 
 			if ((point2d[0] >= 0 && point2d[0] < format_x && point2d[1] >= 0 && point2d[1] < format_y))
-			{
-				flag = true;
-				break;
-			}
-			
+				return true;
 		}
-
-	return flag;
+	}
+	return false;
 }
 
 /////////////////////////////////////////////////////////////////////////

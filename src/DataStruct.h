@@ -79,13 +79,13 @@ struct ImageLasInfo
 {
 	ImageLasInfo() { }
 	ImageLasInfo(const ImageLasInfo& ilm):
-		las_list(ilm.las_list), box_list(ilm.box_list),rotate_(ilm.rotate_), translate_(ilm.translate_){ }
+		las_list(ilm.las_list), box_list(ilm.box_list),rotation(ilm.rotation), translation(ilm.translation){ }
 
 	std::vector<std::string> las_list;
 	std::vector<BoundingBoxCorner3D> box_list;
 
-	Eigen::Matrix3d rotate_;
-	Eigen::Vector3d translate_;
+	Eigen::Matrix3d rotation;
+	Eigen::Vector3d translation;
 
 };
 

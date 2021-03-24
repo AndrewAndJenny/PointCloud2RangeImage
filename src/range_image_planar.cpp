@@ -4,7 +4,7 @@
 /////////////////////////////////////////////////////////////////////////
 void RangeImagePlanar::createFromPointCloudWithFixedSize(const pcl::PointCloud<pcl::PointXYZ>& point_cloud,
 	int di_width, int di_height, float di_center_x, float di_center_y, float di_focal_length, float pixel_size,
-	const Eigen::Matrix3f& Rotation, const Eigen::Vector3f& Location,
+	const Eigen::Matrix3f& rotation, const Eigen::Vector3f& translation,
 	float noise_level, float min_range)
 {
 	//std::cout << "Starting to create range image from "<<point_cloud.points.size ()<<" points.\n";
@@ -19,13 +19,13 @@ void RangeImagePlanar::createFromPointCloudWithFixedSize(const pcl::PointCloud<p
 
 	is_dense = false;
 
-	to_world_system_ = Rotation;
+	to_world_system_ = rotation;
 
-	to_range_image_system_ = Rotation;
+	to_range_image_system_ = rotation;
 	to_range_image_system_.transposeInPlace();
 
-	location_ = Location;
-
+	location_ = translation;
+	
 	difference_x = Eigen::MatrixXf::Zero(height, width);
 	difference_y = Eigen::MatrixXf::Zero(height, width);
 

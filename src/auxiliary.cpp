@@ -69,8 +69,8 @@ void GetFiles(std::string path, std::string ext,std::vector<std::string>& files)
 
 void matrixInverse(Eigen::MatrixXf& matrix)
 {
-	int rows = matrix.rows();
-	int cols = matrix.cols();
+	Eigen::Index rows = matrix.rows();
+	Eigen::Index cols = matrix.cols();
 
 	for (int i = 0; i < rows; ++i)
 	{

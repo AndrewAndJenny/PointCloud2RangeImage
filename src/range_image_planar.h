@@ -60,7 +60,7 @@ public:
 	  */
 		void createFromPointCloudWithFixedSize(const pcl::PointCloud<pcl::PointXYZ>& point_cloud,
 			int di_width, int di_height, float di_center_x, float di_center_y, float di_focal_length, float pixel_size,
-			const Eigen::Matrix3f& Rotation,const Eigen::Vector3f& Location,
+			const Eigen::Matrix3f& rotation, const Eigen::Vector3f& translation,
 			 float noise_level = 0.0f,float min_range = 0.0f);
 
 	/** \brief Integrate the given point cloud into the current range image using a z-buffer
@@ -75,7 +75,7 @@ public:
 		* \param top returns the minimum y position in the image where a point was added
 		* \param left   returns the minimum x pixel position in the image where a point was added
 		*/
-		void doZBuffer(const pcl::PointCloud<pcl::PointXYZ>& point_cloud, float noise_level, float min_range, int& top, int& right, int& bottom, int& left);
+	void doZBuffer(const pcl::PointCloud<pcl::PointXYZ>& point_cloud, float noise_level, float min_range, int& top, int& right, int& bottom, int& left);
 
 	/** Calculate the 3D point according to the given image point and range */
 	inline void calculate3DPoint(float image_x, float image_y, float range, pcl::PointWithRange& point) const;
@@ -147,8 +147,8 @@ protected:
 	Eigen::Matrix3f to_world_system_;        /**< Inverse of to_range_image_system_ */
 	Eigen::Vector3f location_;		/*<the Camera center world coordinates*/
 
-	float pixel_size_;		//<The pixel size													Unit mm
-	float focal_length; //< The focal length of the image					    Unit mm
+	float pixel_size_;		//<The pixel size mm													
+	float focal_length; //< The focal length of the image mm
 	float center_x_, center_y_;      //< The principle point of the image
 
 	pcl::PointWithRange unobserved_point;
