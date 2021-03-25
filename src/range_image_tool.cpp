@@ -150,7 +150,7 @@ void RangeImageTool::generateRangeImage()
 {
 	//get every  images' lasfiles index 
 	getPointCloudIndex();
-	std::cout << "Calculate the mapping relationship between point cloud and image successfully !\n";
+	std::cout << "RangeImageTool: obtain the correspondence between point cloud and image completed!\n";
 
 	int imageid, intrinsics_group;
 	for (int i = 0; i < cameraInfo->m_cameras.size(); i++)
@@ -191,12 +191,13 @@ void RangeImageTool::generateSingleRangeImage(int image_id, ImageLasInfo imgLasI
 	Eigen::Vector3f Location = imgLasInfo.translation.cast<float>();
 	//只有pixelsize,f0单位为mm,其他都是像素坐标，没有单位
 	range_image_planar.createFromPointCloudWithFixedSize(*point_cloud, format_x, format_y, cx, cy, f0, pixel_size, Rotation, Location);
+	std::cout << "image id:" << image_id << " sparse range image completed!\n";
 
 	RangeImagePlanar::Ptr range_image_planar_ptr = range_image_planar.makeShared();
 
 	exportInfo(range_image_planar_ptr, image_id);
 
-	std::cout << image_id<< " image conver to range image completed!\n";
+	std::cout <<"image id:"<< image_id<< "  dense range image completed!\n";
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -220,154 +221,6 @@ void RangeImageTool::getImagePoint(const BACameraIntrinsics& intrinsic, const Im
 
 	point2d[0] = (x_mm + x0_mm + format_x_mm * 0.5) / intrinsic.pixelsize;
 	point2d[1] = (-y_mm + y0_mm + format_y_mm * 0.5) / intrinsic.pixelsize;
-}
-
-/////////////////////////////////////////////////////////////////////////
-void RangeImageTool::getDenseRangeImage(Eigen::MatrixXf& difference_x, Eigen::MatrixXf& difference_y, Eigen::MatrixXf& sparse_range_image, Eigen::MatrixXf& dense_range_image)
-{
-	int windows_size = 2 * grid + 1;
-
-	int rows = difference_x.rows();
-	int cols = difference_x.cols();
-
-	int dense_rows = rows - windows_size + 1;
-	int dense_cols = cols - windows_size + 1;
-
-	std::vector<std::vector<Eigen::MatrixXf>> KmX(windows_size);
-	std::vector<std::vector<Eigen::MatrixXf>> KmY(windows_size);
-	std::vector<std::vector<Eigen::MatrixXf>> KmD(windows_size);
-
-	Eigen::MatrixXf tmp = Eigen::MatrixXf::Zero(dense_rows, dense_cols);
-	for (int i = 0; i < windows_size; ++i)
-		for (int j = 0; j < windows_size; ++j)
-		{
-			tmp.fill(i - grid);
-			Eigen::MatrixXf KmX_ij = difference_x.block(i,j, dense_rows, dense_cols) - tmp;
-			KmX[i].emplace_back(KmX_ij);
-
-			tmp.fill(j - grid);
-			Eigen::MatrixXf KmY_ij = difference_y.block(i, j, dense_rows, dense_cols) - tmp;
-			KmY[i].emplace_back(KmY_ij);
-
-			Eigen::MatrixXf KmD_ij = sparse_range_image.block(i, j, dense_rows, dense_cols);
-			KmD[i].emplace_back(KmD_ij);
-		}
-
-	Eigen::MatrixXf sum_range = Eigen::MatrixXf::Zero(dense_rows, dense_cols);
-	Eigen::MatrixXf sum_distance = Eigen::MatrixXf::Zero(dense_rows, dense_cols);
-
-	Eigen::MatrixXf  tmp_distance;
-
-	for (int i = 0; i < windows_size; ++i)
-		for (int j = 0; j < windows_size; ++j)
-		{
-			tmp_distance = KmX[i][j].cwiseProduct(KmX[i][j]) + KmY[i][j].cwiseProduct(KmY[i][j]);
-			tmp_distance = tmp_distance.cwiseSqrt();//sqrt()
-
-			matrixInverse(tmp_distance);				//1./
-
-			sum_range = sum_range + tmp_distance.cwiseProduct(KmD[i][j]);
-			sum_distance = sum_distance + tmp_distance;
-		}
-
-	KmX.erase(KmX.begin(), KmX.end());
-	KmY.erase(KmY.begin(), KmY.end());
-	KmD.erase(KmD.begin(), KmD.end());
-
-	auto mask = sum_distance.array() == 0;
-	sum_distance = sum_distance + mask.matrix().cast<float>();
-
-	dense_range_image = Eigen::MatrixXf::Zero(rows, cols);
-
-	dense_range_image.block(grid, grid, dense_rows, dense_cols) = sum_range.cwiseQuotient(sum_distance);
-
-}
-
-/////////////////////////////////////////////////////////////////////////
-bool RangeImageTool::exportInfo(RangeImagePlanar::Ptr cofiguration_info, int image_id)
-{
-	int format_y = cofiguration_info->getHeight();
-	int format_x = cofiguration_info->getWidth();
-
-	Eigen::MatrixXf real_range = Eigen::MatrixXf::Zero(format_y, format_x);
-	Eigen::MatrixXf real_zvalue = Eigen::MatrixXf::Zero(format_y, format_x);
-	
-	cv::Mat real_xvalue_cv = cv::Mat::zeros(format_y, format_x, CV_32FC1);
-	cv::Mat real_yvalue_cv = cv::Mat::zeros(format_y, format_x, CV_32FC1);
-	for (int y = 0; y < format_y; ++y)
-	{
-		float* real_xvalue_ptr = real_xvalue_cv.ptr<float>(y);
-		float* real_yvalue_ptr = real_yvalue_cv.ptr<float>(y);
-		for (int x = 0; x < format_x; ++x)
-		{
-			pcl::PointWithRange& point = cofiguration_info->points[y*format_x + x];
-			if (!std::isinf(point.range))
-			{
-				real_xvalue_ptr[x] = point.x;
-				real_yvalue_ptr[x] = point.y;
-
-				real_zvalue(y, x) = point.z;
-				real_range(y, x) = point.range;
-			}
-		}
-	}
-
-	//Interpolation
-	Eigen::MatrixXf interpolate_range, interpolate_zvalue;
-	getDenseRangeImage(cofiguration_info->difference_x, cofiguration_info->difference_y, real_range, interpolate_range);
-	getDenseRangeImage(cofiguration_info->difference_x, cofiguration_info->difference_y, real_zvalue, interpolate_zvalue);
-
-	//format conversion
-	cv::Mat interpolate_range_cv, interpolate_zvalue_cv, real_zvalue_cv;
-
-	cv::eigen2cv(interpolate_range, interpolate_range_cv);
-	cv::eigen2cv(interpolate_zvalue, interpolate_zvalue_cv);
-	cv::eigen2cv(real_zvalue, real_zvalue_cv);
-
-	//Calculate  three-dimensional coordinates 
-	cv::Mat interpolate_range_position = cv::Mat::zeros(format_y, format_x, CV_32FC3);
-	caculateAll3DPoints(cofiguration_info, interpolate_range_cv, interpolate_range_position);
-
-	//Strech 'interpolate_zvalue_cv' to 0-255
-	double min_gray_value, max_gray_value;
-
-	cv::Mat mask = interpolate_zvalue_cv > 0;
-	cv::minMaxLoc(interpolate_zvalue_cv, &min_gray_value, &max_gray_value, nullptr, nullptr, mask);
-
-	float breadth = static_cast<float>(max_gray_value) - static_cast<float>(min_gray_value);
-
-	cv::Mat min_mat = cv::Mat::zeros(format_y, format_x, CV_32FC1);
-	min_mat.setTo(static_cast<float>(min_gray_value), mask);
-
-	cv::Mat strech_dense_image_zvalue = (interpolate_zvalue_cv - min_mat) / breadth * 255;
-
-	std::vector<cv::Mat> split_channels(3);
-	cv::split(interpolate_range_position, split_channels);
-
-	bool flag;
-	//export strech dense zvalue image
-	std::string interpolate_zvalue_file_path = saveFolder + "/" + std::to_string(image_id).append("_inpol_zvalue.jpg");
-	flag = cv::imwrite(interpolate_zvalue_file_path, strech_dense_image_zvalue);
-
-	//export real x,y,z image
-	std::string real_x_file_path = saveFolder + "/" + std::to_string(image_id).append("_real_x.tiff");
-	std::string real_y_file_path = saveFolder + "/" + std::to_string(image_id).append("_real_y.tiff");
-	std::string real_z_file_path = saveFolder + "/" + std::to_string(image_id).append("_real_z.tiff");
-
-	flag = cv::imwrite(real_x_file_path, real_xvalue_cv);
-	flag = cv::imwrite(real_y_file_path, real_yvalue_cv);
-	flag = cv::imwrite(real_z_file_path, real_zvalue_cv);
-
-	//export x,y,z image after interpolating
-	std::string inpol_x_file_path = saveFolder + "/" + std::to_string(image_id).append("_inpol_x.tiff");
-	std::string inpol_y_file_path = saveFolder + "/" + std::to_string(image_id).append("_inpol_y.tiff");
-	std::string inpol_z_file_path = saveFolder + "/" + std::to_string(image_id).append("_inpol_z.tiff");
-
-	flag = cv::imwrite(inpol_x_file_path, split_channels[0]);
-	flag = cv::imwrite(inpol_y_file_path, split_channels[1]);
-	flag = cv::imwrite(inpol_z_file_path, split_channels[2]);
-
-	return flag;
 }
 
 // =====PROTECT METHODS=====
@@ -514,9 +367,9 @@ void RangeImageTool::caculateAll3DPoints(RangeImagePlanar::Ptr cofiguration_info
 				Eigen::Vector3f deltaPoint(delta_x, delta_y, -focal_length);
 				Eigen::Vector3f transformedPoint = to_world_system * deltaPoint;
 
-				float projectScale = range / transformedPoint.norm();
+				float scale = range / transformedPoint.norm();
 
-				Eigen::Vector3f point = projectScale * transformedPoint + camera_world_location;
+				Eigen::Vector3f point = scale * transformedPoint + camera_world_location;
 
 				cv::Vec3f& point_cv = range_image_3Dposition.at<cv::Vec3f>(y, x);
 				point_cv[0] = point[0];
@@ -526,4 +379,203 @@ void RangeImageTool::caculateAll3DPoints(RangeImagePlanar::Ptr cofiguration_info
 			
 		}
 	}
+}
+
+/////////////////////////////////////////////////////////////////////////
+void RangeImageTool::getDenseRangeImage(Eigen::MatrixXf& difference_x, Eigen::MatrixXf& difference_y, Eigen::MatrixXf& sparse_range_image, Eigen::MatrixXf& dense_range_image)
+{
+	int windows_size = 2 * grid + 1;
+
+	int rows = difference_x.rows();
+	int cols = difference_x.cols();
+
+	int dense_rows = rows - windows_size + 1;
+	int dense_cols = cols - windows_size + 1;
+
+	std::vector<std::vector<Eigen::MatrixXf>> KmX(windows_size);
+	std::vector<std::vector<Eigen::MatrixXf>> KmY(windows_size);
+	std::vector<std::vector<Eigen::MatrixXf>> KmD(windows_size);
+
+	Eigen::MatrixXf tmp = Eigen::MatrixXf::Zero(dense_rows, dense_cols);
+	for (int i = 0; i < windows_size; ++i)
+		for (int j = 0; j < windows_size; ++j)
+		{
+			tmp.fill(i - grid);
+			Eigen::MatrixXf KmX_ij = difference_x.block(i, j, dense_rows, dense_cols) - tmp;
+			KmX[i].emplace_back(KmX_ij);
+
+			tmp.fill(j - grid);
+			Eigen::MatrixXf KmY_ij = difference_y.block(i, j, dense_rows, dense_cols) - tmp;
+			KmY[i].emplace_back(KmY_ij);
+
+			Eigen::MatrixXf KmD_ij = sparse_range_image.block(i, j, dense_rows, dense_cols);
+			KmD[i].emplace_back(KmD_ij);
+		}
+
+	Eigen::MatrixXf sum_range = Eigen::MatrixXf::Zero(dense_rows, dense_cols);
+	Eigen::MatrixXf sum_distance = Eigen::MatrixXf::Zero(dense_rows, dense_cols);
+
+	Eigen::MatrixXf  tmp_distance;
+
+	for (int i = 0; i < windows_size; ++i)
+		for (int j = 0; j < windows_size; ++j)
+		{
+			tmp_distance = KmX[i][j].cwiseProduct(KmX[i][j]) + KmY[i][j].cwiseProduct(KmY[i][j]);
+			tmp_distance = tmp_distance.cwiseSqrt();//sqrt()
+
+			matrixInverse(tmp_distance);				//1./
+
+			sum_range = sum_range + tmp_distance.cwiseProduct(KmD[i][j]);
+			sum_distance = sum_distance + tmp_distance;
+		}
+
+	KmX.erase(KmX.begin(), KmX.end());
+	KmY.erase(KmY.begin(), KmY.end());
+	KmD.erase(KmD.begin(), KmD.end());
+
+	auto mask = sum_distance.array() == 0;
+	sum_distance = sum_distance + mask.matrix().cast<float>();
+
+	dense_range_image = Eigen::MatrixXf::Zero(rows, cols);
+	dense_range_image.block(grid, grid, dense_rows, dense_cols) = sum_range.cwiseQuotient(sum_distance);
+}
+
+/////////////////////////////////////////////////////////////////////////
+void RangeImageTool::getDenseRangeImage2(Eigen::MatrixXf& difference_x, Eigen::MatrixXf& difference_y, Eigen::MatrixXf& sparse_range_image, Eigen::MatrixXf& dense_range_image)
+{
+	int windows_size = 2 * grid + 1;
+
+	int rows = difference_x.rows();
+	int cols = difference_x.cols();
+
+	int dense_rows = rows - windows_size + 1;
+	int dense_cols = cols - windows_size + 1;
+
+	Eigen::MatrixXf template_x_direction = Eigen::MatrixXf::Zero(windows_size, windows_size);
+	Eigen::MatrixXf template_y_direction = Eigen::MatrixXf::Zero(windows_size, windows_size);
+
+	//build template
+
+	for (int i=0;i< windows_size;++i)
+		for (int j = 0; j < windows_size; ++j)
+		{
+			template_x_direction(i, j) = i - grid;
+			template_y_direction(i, j) = j - grid;
+		}
+
+	dense_range_image = Eigen::MatrixXf::Zero(rows, cols);
+
+	Eigen::MatrixXf region_range, region_x, region_y, region_distance, sum_range;
+	for (int i = grid; i < grid+ dense_rows-1; ++i)
+		for (int j = grid; j < grid + dense_cols - 1; ++j)
+		{
+			region_range = sparse_range_image.block(i - grid, j - grid, windows_size, windows_size);
+			region_x = difference_x.block(i - grid, j - grid, windows_size, windows_size) + template_x_direction;
+			region_y = difference_y.block(i - grid, j - grid, windows_size, windows_size) + template_y_direction;
+
+			region_distance = (region_x.cwiseProduct(region_x) + region_y.cwiseProduct(region_y)).cwiseSqrt();
+			//region_distance = region_distance.cwiseSqrt();
+			matrixInverse(region_distance);
+
+			sum_range = region_range.cwiseProduct(region_distance);
+			
+			auto mask = region_distance.array() == 0;
+			region_distance = region_distance + mask.matrix().cast<float>();
+
+			dense_range_image(i, j) = sum_range.sum() / region_distance.sum();
+		}
+}
+/////////////////////////////////////////////////////////////////////////
+bool RangeImageTool::exportInfo(RangeImagePlanar::Ptr cofiguration_info, int image_id)
+{
+	int format_y = cofiguration_info->getHeight();
+	int format_x = cofiguration_info->getWidth();
+
+	Eigen::MatrixXf real_range = Eigen::MatrixXf::Zero(format_y, format_x);
+	Eigen::MatrixXf real_zvalue = Eigen::MatrixXf::Zero(format_y, format_x);
+
+	cv::Mat real_xvalue_cv = cv::Mat::zeros(format_y, format_x, CV_32FC1);
+	cv::Mat real_yvalue_cv = cv::Mat::zeros(format_y, format_x, CV_32FC1);
+	for (int y = 0; y < format_y; ++y)
+	{
+		float* real_xvalue_ptr = real_xvalue_cv.ptr<float>(y);
+		float* real_yvalue_ptr = real_yvalue_cv.ptr<float>(y);
+		for (int x = 0; x < format_x; ++x)
+		{
+			pcl::PointWithRange& point = cofiguration_info->points[y*format_x + x];
+			if (!std::isinf(point.range))
+			{
+				real_xvalue_ptr[x] = point.x;
+				real_yvalue_ptr[x] = point.y;
+
+				real_zvalue(y, x) = point.z;
+				real_range(y, x) = point.range;
+			}
+		}
+	}
+
+	//Interpolation
+	Eigen::MatrixXf interpolate_range, interpolate_zvalue;
+	if (grid < 4)
+	{
+		getDenseRangeImage(cofiguration_info->difference_x, cofiguration_info->difference_y, real_range, interpolate_range);
+		getDenseRangeImage(cofiguration_info->difference_x, cofiguration_info->difference_y, real_zvalue, interpolate_zvalue);
+	}
+	else
+	{
+		getDenseRangeImage2(cofiguration_info->difference_x, cofiguration_info->difference_y, real_range, interpolate_range);
+		getDenseRangeImage2(cofiguration_info->difference_x, cofiguration_info->difference_y, real_zvalue, interpolate_zvalue);
+	}
+
+	//format conversion
+	cv::Mat interpolate_range_cv, interpolate_zvalue_cv, real_zvalue_cv;
+
+	cv::eigen2cv(interpolate_range, interpolate_range_cv);
+	cv::eigen2cv(interpolate_zvalue, interpolate_zvalue_cv);
+	cv::eigen2cv(real_zvalue, real_zvalue_cv);
+
+	//Calculate  three-dimensional coordinates 
+	cv::Mat interpolate_range_position = cv::Mat::zeros(format_y, format_x, CV_32FC3);
+	caculateAll3DPoints(cofiguration_info, interpolate_range_cv, interpolate_range_position);
+
+	//Strech 'interpolate_zvalue_cv' to 0-255
+	double min_gray_value, max_gray_value;
+
+	cv::Mat mask = interpolate_zvalue_cv > 0;
+	cv::minMaxLoc(interpolate_zvalue_cv, &min_gray_value, &max_gray_value, nullptr, nullptr, mask);
+
+	float breadth = static_cast<float>(max_gray_value) - static_cast<float>(min_gray_value);
+
+	cv::Mat min_mat = cv::Mat::zeros(format_y, format_x, CV_32FC1);
+	min_mat.setTo(static_cast<float>(min_gray_value), mask);
+
+	cv::Mat strech_dense_image_zvalue = (interpolate_zvalue_cv - min_mat) / breadth * 255;
+
+	std::vector<cv::Mat> split_channels(3);
+	cv::split(interpolate_range_position, split_channels);
+
+	bool flag;
+	//export strech dense zvalue image
+	std::string interpolate_zvalue_file_path = saveFolder + "/" + std::to_string(image_id).append("_inpol_zvalue.jpg");
+	flag = cv::imwrite(interpolate_zvalue_file_path, strech_dense_image_zvalue);
+
+	//export real x,y,z image
+	std::string real_x_file_path = saveFolder + "/" + std::to_string(image_id).append("_real_x.tiff");
+	std::string real_y_file_path = saveFolder + "/" + std::to_string(image_id).append("_real_y.tiff");
+	std::string real_z_file_path = saveFolder + "/" + std::to_string(image_id).append("_real_z.tiff");
+
+	flag = cv::imwrite(real_x_file_path, real_xvalue_cv);
+	flag = cv::imwrite(real_y_file_path, real_yvalue_cv);
+	flag = cv::imwrite(real_z_file_path, real_zvalue_cv);
+
+	//export x,y,z image after interpolating
+	std::string inpol_x_file_path = saveFolder + "/" + std::to_string(image_id).append("_inpol_x.tiff");
+	std::string inpol_y_file_path = saveFolder + "/" + std::to_string(image_id).append("_inpol_y.tiff");
+	std::string inpol_z_file_path = saveFolder + "/" + std::to_string(image_id).append("_inpol_z.tiff");
+
+	flag = cv::imwrite(inpol_x_file_path, split_channels[0]);
+	flag = cv::imwrite(inpol_y_file_path, split_channels[1]);
+	flag = cv::imwrite(inpol_z_file_path, split_channels[2]);
+
+	return flag;
 }

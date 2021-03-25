@@ -31,7 +31,7 @@ static void Usage(const char* pszErrorMsg = NULL)
 int main(int argc, char** argv)
 {
 	std::string cmrFile_path = "", phtFile_path = "", lasFolder_Path = "", saveFolder_path = "";
-	int ngrid = 2;
+	int ngrid = 4;
 	double max_elevation = 150;
 
 	for (int i = 1; i < argc; i++)

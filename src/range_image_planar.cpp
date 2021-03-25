@@ -176,9 +176,9 @@ void RangeImagePlanar::calculate3DPoint(float image_x, float image_y, float rang
 	Eigen::Vector3f deltaPoint(delta_x, delta_y, -focal_length);
 	Eigen::Vector3f transformedPoint = to_world_system_ * deltaPoint;
 
-	float projectScale = range / transformedPoint.norm();
+	float scale = range / transformedPoint.norm();
 
-	point = projectScale * transformedPoint + location_;
+	point = scale * transformedPoint + location_;
 }
 
 /////////////////////////////////////////////////////////////////////////

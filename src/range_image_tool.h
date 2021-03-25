@@ -76,14 +76,6 @@ public:
 		*/
 	void getImagePoint(const BACameraIntrinsics& intrinsic, const ImageLasInfo& imageinfo, const Eigen::Vector3d& point3d, Eigen::Vector2d& point2d);
 
-	/** \brief Calculate the dense range image from sparse range image using window weighted interpolation
-		*\param difference_x a matrix that stores the distance between each pixel and the real point in the x direction
-		*\param difference_y a matrix that stores the distance between each pixel and the real point in the y direction
-		*\param sparse_range_image origin range image
-		*\param dense_range_image ouput interpolation range image
-		*/
-	void getDenseRangeImage(Eigen::MatrixXf& difference_x, Eigen::MatrixXf& difference_y, Eigen::MatrixXf& sparse_range_image, Eigen::MatrixXf& dense_range_image);
-
 protected:
 	// =====PROTECT METHODS=====
 
@@ -98,6 +90,22 @@ protected:
 		* \param imageinfo record R and Translate
 		*/
 	void getRotationAndTranslate(const BACamera& extrinsic, ImageLasInfo& imageinfo);
+
+	/** \brief Calculate the dense range image from sparse range image using window weighted interpolation
+		*\param difference_x a matrix that stores the distance between each pixel and the real point in the x direction
+		*\param difference_y a matrix that stores the distance between each pixel and the real point in the y direction
+		*\param sparse_range_image origin range image
+		*\param dense_range_image ouput interpolation range image
+		*/
+	void getDenseRangeImage(Eigen::MatrixXf& difference_x, Eigen::MatrixXf& difference_y, Eigen::MatrixXf& sparse_range_image, Eigen::MatrixXf& dense_range_image);
+
+	/** \brief Calculate the dense range image from sparse range image using window weighted interpolation(Non-global matrix operations)
+		*\param difference_x a matrix that stores the distance between each pixel and the real point in the x direction
+		*\param difference_y a matrix that stores the distance between each pixel and the real point in the y direction
+		*\param sparse_range_image origin range image
+		*\param dense_range_image ouput interpolation range image
+		*/
+	void getDenseRangeImage2(Eigen::MatrixXf& difference_x, Eigen::MatrixXf& difference_y, Eigen::MatrixXf& sparse_range_image, Eigen::MatrixXf& dense_range_image);
 
 	/**\brief Calculate the 3D coordinates of the dense distance image after interpolation, and store x, y, z as BGR three channels respectively
 		*\param cofiguration_info 
