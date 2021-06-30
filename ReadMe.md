@@ -1,4 +1,5 @@
-# RangeImagePlanar（To be improved）
+# RangeImagePlanar
+The current program needs more dependencies. Recently, I will change it to a faster version with fewer libraries
 
 A tool that uses multi-threading to batch convert point clouds into range images
 
